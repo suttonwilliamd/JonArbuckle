@@ -17,12 +17,18 @@
         },
         {
             "name": "OMV Local",
-            "url": "http://192.168.7.57",
-            "type": "http"
+            "url": "https://192.168.7.57",
+            "type": "http",
+            "verify_tls": false
         },
         {
             "name": "Jellyfin Local",
             "url": "http://192.168.7.57:8096",
+            "type": "http"
+        },
+        {
+            "name": "Firecrawl Local",
+            "url": "http://192.168.7.57:3002/health",
             "type": "http"
         }
     ],
@@ -53,12 +59,32 @@
             "name": "Dev",
             "url": "https://dev.william64.com",
             "type": "http"
+        },
+        {
+            "name": "Dashboard",
+            "url": "https://dash.william64.com",
+            "type": "http"
+        },
+        {
+            "name": "CMS",
+            "url": "https://cms.william64.com",
+            "type": "http"
         }
     ],
     "api_endpoints": [
         {
             "name": "Server Stats API",
-            "url": "https://william64.com/api/server-stats",
+            "url": "https://dash.william64.com/api/server-stats",
+            "type": "http"
+        },
+        {
+            "name": "qBittorrent Stats API",
+            "url": "https://dash.william64.com/api/qbittorrent-stats",
+            "type": "http"
+        },
+        {
+            "name": "MC Status API",
+            "url": "https://dash.william64.com/api/mc-status",
             "type": "http"
         }
     ]
