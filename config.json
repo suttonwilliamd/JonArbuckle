@@ -1,6 +1,8 @@
 {
     "refresh_interval": 1,
     "mini_mode_size": "248x208",
+    "default_retries": 1,
+    "default_backoff_ms": 200,
     "local_endpoints": [
         {
             "name": "Garfield (Local)",
