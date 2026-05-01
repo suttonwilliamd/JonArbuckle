@@ -1,0 +1,63 @@
+{
+    "refresh_interval": 1,
+    "mini_mode_size": "248x208",
+    "local_endpoints": [
+        {
+            "name": "Garfield (Local)",
+            "url": "http://192.168.7.57",
+            "type": "http"
+        },
+        {
+            "name": "Garfield SSH",
+            "host": "192.168.7.57",
+            "port": 22,
+            "type": "ssh"
+        },
+        {
+            "name": "OMV Local",
+            "url": "http://192.168.7.57",
+            "type": "http"
+        },
+        {
+            "name": "Jellyfin Local",
+            "url": "http://192.168.7.57:8096",
+            "type": "http"
+        }
+    ],
+    "public_endpoints": [
+        {
+            "name": "william64.com",
+            "url": "https://william64.com",
+            "type": "http"
+        },
+        {
+            "name": "Jellyfin",
+            "url": "https://jellyfin.william64.com",
+            "type": "http",
+            "check_jellyfin": true
+        },
+        {
+            "name": "MC Server",
+            "host": "192.168.7.57",
+            "port": 8123,
+            "type": "minecraft"
+        },
+        {
+            "name": "MC Panel",
+            "url": "https://mc.william64.com",
+            "type": "http"
+        },
+        {
+            "name": "Dev",
+            "url": "https://dev.william64.com",
+            "type": "http"
+        }
+    ],
+    "api_endpoints": [
+        {
+            "name": "Server Stats API",
+            "url": "https://william64.com/api/server-stats",
+            "type": "http"
+        }
+    ]
+}
