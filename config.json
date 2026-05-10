@@ -32,7 +32,7 @@
             "type": "http"
         },
         {
-            "name": "OBS TTS/TalkingAvatar Overlay",
+            "name": "Garfield OBS Avatar",
             "url": "http://192.168.7.57:8899/",
             "type": "http"
         }
