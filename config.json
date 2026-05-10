@@ -30,6 +30,11 @@
             "name": "Firecrawl Local",
             "url": "http://192.168.7.57:3002/health",
             "type": "http"
+        },
+        {
+            "name": "OBS TTS/TalkingAvatar Overlay",
+            "url": "http://192.168.7.57:8899/",
+            "type": "http"
         }
     ],
     "public_endpoints": [
