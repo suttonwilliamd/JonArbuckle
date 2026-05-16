@@ -13,7 +13,10 @@ import warnings
 import sys
 import time
 from pathlib import Path
-from mcstatus import JavaServer
+try:
+    from mcstatus import JavaServer
+except Exception:
+    JavaServer = None
 
 def get_script_dir():
     if getattr(sys, 'frozen', False):
@@ -195,14 +198,38 @@ def check_endpoint(ep, debug=False):
                                   last_checked=datetime.now())
 
     elif endpoint_type == "minecraft" and host and port:
+        timeout = ep.get("timeout", 10)
+        hosts_to_try = [host]
+        if host == "mc.william64.com":
+            hosts_to_try = ["192.168.7.57", "mc.william64.com"]
+
+        # Fast socket probe first: distinguishes hard-down vs spin-up gateway reachable.
+        socket_open = False
+        for try_host in hosts_to_try:
+            try:
+                if check_socket(try_host, port, min(timeout, 3)) == 0:
+                    socket_open = True
+                    break
+            except Exception:
+                pass
+
+        # If mcstatus is unavailable locally, still show meaningful state.
+        if JavaServer is None:
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            if socket_open:
+                return EndpointStatus(name=name, url=f"{host}:{port}", status="yellow",
+                                      response_time=elapsed,
+                                      message="Gateway up (MC probe unavailable)",
+                                      last_checked=datetime.now())
+            return EndpointStatus(name=name, url=f"{host}:{port}", status="red",
+                                  response_time=elapsed,
+                                  message="Port closed",
+                                  last_checked=datetime.now())
+
         try:
             if debug:
                 print(f"[{datetime.now()}] Checking Minecraft {host}:{port}...")
-            timeout = ep.get("timeout", 10)
-            hosts_to_try = [host]
-            if host == "mc.william64.com":
-                hosts_to_try = ["192.168.7.57", "mc.william64.com"]
-            
+
             for try_host in hosts_to_try:
                 try:
                     if debug:
@@ -230,6 +257,11 @@ def check_endpoint(ep, debug=False):
             elapsed = (datetime.now() - start_time).total_seconds() * 1000
             if debug:
                 print(f"[{datetime.now()}] FAILED: {type(e).__name__}: {e}")
+            if socket_open:
+                return EndpointStatus(name=name, url=f"{host}:{port}", status="yellow",
+                                      response_time=elapsed,
+                                      message="Gateway up, instance sleeping",
+                                      last_checked=datetime.now())
             return EndpointStatus(name=name, url=f"{host}:{port}", status="red",
                                   response_time=elapsed, message=str(e)[:30],
                                   last_checked=datetime.now())

@@ -19,6 +19,31 @@ A Tkinter-based service monitoring dashboard that displays endpoint status in bo
 
 Edit `config.json` to configure endpoints and behavior.
 
+### Garfield Homelab Baseline (current)
+
+`config.json` is now aligned to the active services in `/home/suttonwilliamd/docker-compose.yml` and live checks on host `192.168.7.57`.
+
+Monitored local services now include:
+- Garfield SSH (`192.168.7.57:22`)
+- Jellyfin local (`:8096`)
+- Firecrawl local health (`:3002/health`)
+- Garfield OBS Avatar overlay (`:8899`)
+- qBittorrent WebUI (`:8081`)
+
+Monitored public services include:
+- `william64.com`, `dev.william64.com`, `dash.william64.com`, `cms.william64.com`
+- `jellyfin.william64.com`, `mc.william64.com`
+- `traefik.william64.com`
+
+Monitored APIs include:
+- `/api/server-stats`
+- `/api/qbittorrent-stats`
+- `/api/mc-status`
+
+Removed stale local checks:
+- `http://192.168.7.57` (redirect/TLS mismatch noise)
+- `https://192.168.7.57` OMV check (not reliable for this dashboard use-case)
+
 ### Global Settings
 
 | Field | Type | Default | Description |
@@ -106,7 +131,11 @@ Endpoints are organized in three categories:
 - **Right-click** mini bar to exit and save window size
 - Drag mini bar to reposition
 - Double-click full dashboard to return to mini mode
-- Status indicators: green (OK), yellow (warning), red (down)
+- Status indicators: green (service fully up), yellow (warning/degraded), red (down)
+- Minecraft checks now distinguish:
+  - `green`: Minecraft instance responded to status ping
+  - `yellow`: spin-up gateway reachable but MC instance appears asleep/booting
+  - `red`: Minecraft port not reachable
 
 ## Troubleshooting
 
