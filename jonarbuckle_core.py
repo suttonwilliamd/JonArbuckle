@@ -199,6 +199,8 @@ def check_endpoint(ep, debug=False):
 
     elif endpoint_type == "minecraft" and host and port:
         timeout = ep.get("timeout", 10)
+        non_waking = bool(ep.get("non_waking", False))
+        backend_state_url = ep.get("backend_state_url")
         hosts_to_try = [host]
         if host == "mc.william64.com":
             hosts_to_try = ["192.168.7.57", "mc.william64.com"]
@@ -212,6 +214,37 @@ def check_endpoint(ep, debug=False):
                     break
             except Exception:
                 pass
+
+        # Optional non-waking backend state check (container state API).
+        backend_running = None
+        backend_status = None
+        if backend_state_url:
+            try:
+                r = requests.get(backend_state_url, timeout=min(timeout, 3))
+                if r.status_code == 200:
+                    payload = r.json()
+                    backend_running = bool(payload.get("running", False))
+                    backend_status = payload.get("status", "unknown")
+            except Exception:
+                pass
+
+        # Non-waking mode: never perform protocol status ping through proxy.
+        if non_waking:
+            elapsed = (datetime.now() - start_time).total_seconds() * 1000
+            if backend_running is True:
+                return EndpointStatus(name=name, url=f"{host}:{port}", status="green",
+                                      response_time=elapsed,
+                                      message=f"MC backend {backend_status or 'running'}",
+                                      last_checked=datetime.now())
+            if socket_open:
+                return EndpointStatus(name=name, url=f"{host}:{port}", status="yellow",
+                                      response_time=elapsed,
+                                      message="Gateway up, instance sleeping",
+                                      last_checked=datetime.now())
+            return EndpointStatus(name=name, url=f"{host}:{port}", status="red",
+                                  response_time=elapsed,
+                                  message="Port closed",
+                                  last_checked=datetime.now())
 
         # If mcstatus is unavailable locally, still show meaningful state.
         if JavaServer is None:

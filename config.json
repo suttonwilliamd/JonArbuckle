@@ -5,21 +5,10 @@
     "default_backoff_ms": 200,
     "local_endpoints": [
         {
-            "name": "Garfield (Local)",
-            "url": "http://192.168.7.57",
-            "type": "http"
-        },
-        {
             "name": "Garfield SSH",
             "host": "192.168.7.57",
             "port": 22,
             "type": "ssh"
-        },
-        {
-            "name": "OMV Local",
-            "url": "https://192.168.7.57",
-            "type": "http",
-            "verify_tls": false
         },
         {
             "name": "Jellyfin Local",
@@ -34,6 +23,11 @@
         {
             "name": "Garfield OBS Avatar",
             "url": "http://192.168.7.57:8899/",
+            "type": "http"
+        },
+        {
+            "name": "qBittorrent Local",
+            "url": "http://192.168.7.57:8081",
             "type": "http"
         }
     ],
@@ -53,7 +47,9 @@
             "name": "MC Server",
             "host": "192.168.7.57",
             "port": 8123,
-            "type": "minecraft"
+            "type": "minecraft",
+            "non_waking": true,
+            "backend_state_url": "https://mc.william64.com/api/mc-backend-state"
         },
         {
             "name": "MC Panel",
@@ -73,6 +69,11 @@
         {
             "name": "CMS",
             "url": "https://cms.william64.com",
+            "type": "http"
+        },
+        {
+            "name": "Traefik Dashboard",
+            "url": "https://traefik.william64.com",
             "type": "http"
         }
     ],
