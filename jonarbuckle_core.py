@@ -124,6 +124,12 @@ def _http_request_with_retry(ep):
     for attempt in range(retries + 1):
         try:
             resp = requests.get(url, timeout=timeout, verify=verify_tls)
+            if 500 <= resp.status_code < 600 and attempt < retries:
+                # Release only discarded responses; return the final HTTP status
+                # unchanged so callers can still classify exhausted 5xx as yellow.
+                resp.close()
+                time.sleep(backoff_ms / 1000.0)
+                continue
             return resp
         except Exception as e:
             last_exception = e
