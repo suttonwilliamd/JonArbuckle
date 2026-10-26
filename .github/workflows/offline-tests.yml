@@ -1,0 +1,42 @@
+name: Offline HTTP retry tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.13']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Create isolated environment
+        run: python -m venv .venv
+      - name: Install real dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: .venv/bin/python -m pip install -r requirements.txt
+      - name: Install real dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: .venv/Scripts/python.exe -m pip install -r requirements.txt
+      - name: Offline unittest (Ubuntu)
+        if: runner.os == 'Linux'
+        run: .venv/bin/python -m unittest discover -s tests -v
+      - name: Offline unittest (Windows)
+        if: runner.os == 'Windows'
+        run: .venv/Scripts/python.exe -m unittest discover -s tests -v

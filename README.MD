@@ -72,6 +72,26 @@ Each endpoint supports these fields:
 | `backoff_ms` | int | inherits `default_backoff_ms` | Delay between HTTP retries in milliseconds |
 | `check_jellyfin` | bool | false | Verify Jellyfin server response |
 
+### HTTP retry behavior
+
+For HTTP endpoints, `retries` is the number of additional attempts after the
+initial request (zero means one request). Received HTTP 500–599 responses and
+existing transient exceptions (connection errors, timeouts, and HTTPError with a
+5xx response) share that attempt budget. Other responses, including 4xx, return
+immediately. Endpoint retry/backoff settings override the global defaults.
+
+The fixed `backoff_ms` delay occurs only between attempts, never after the last
+attempt. Discarded intermediate 5xx responses are closed before the next attempt.
+An exhausted 5xx is returned unchanged: the dashboard still reports yellow
+`HTTP 5xx`, not green or an exception-based red status. Exhausted transient
+exceptions are still raised. Timeout and TLS verification settings are forwarded
+unchanged on every request; TLS verification remains enabled by default.
+
+`timeout` applies to each Requests call, not a strict whole-operation deadline.
+Requests timeouts do not bound all DNS, redirects, or total response-read time;
+multiple attempts and fixed backoff can further increase elapsed time. Keep
+retry counts and delays modest; this is not a whole-app networking safety claim.
+
 ### Endpoint Categories
 
 Endpoints are organized in three categories:
@@ -136,6 +156,52 @@ Endpoints are organized in three categories:
   - `green`: Minecraft instance responded to status ping
   - `yellow`: spin-up gateway reachable but MC instance appears asleep/booting
   - `red`: Minecraft port not reachable
+
+## Offline HTTP contract tests
+
+Use Python 3.11 or 3.13 with Tkinter available and real dependencies installed in
+an isolated environment. Do **not** run the dashboard or the default launchers
+for these tests. No display server is needed: the suite imports only the core,
+blocks desktop/thread/config side effects, uses reserved `.invalid` URLs, injects
+HTTP responses/exceptions and sleeps, and rejects real Requests/socket/DNS
+transport. No real `config.json` or endpoint is read or contacted.
+
+Ubuntu (with Python/Tkinter already available):
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+timeout 60 .venv/bin/python -B -m unittest discover -s tests -v
+```
+
+Windows PowerShell (Python installed with Tcl/Tk support):
+
+```powershell
+py -3.13 -m venv .venv # or -3.11
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+$job = Start-Job -ScriptBlock {
+    param($repo)
+    Set-Location $repo
+    & .venv/Scripts/python.exe -B -m unittest discover -s tests -v
+    if ($LASTEXITCODE -ne 0) { throw 'Offline tests failed' }
+} -ArgumentList $PWD.Path
+try {
+    if (-not (Wait-Job $job -Timeout 60)) { throw 'Offline tests timed out' }
+    Receive-Job $job -ErrorAction Stop
+    if ($job.State -ne 'Completed') { throw 'Offline tests failed' }
+} finally {
+    Stop-Job $job
+    Remove-Job $job
+}
+```
+
+`.github/workflows/offline-tests.yml` defines the equivalent Ubuntu/Windows ×
+Python 3.11/3.13 matrix, with read-only repository permissions, no persisted Git
+credentials, isolated dependencies, and a five-minute job timeout. Dependency
+installation requires package-registry access; the tests themselves are offline.
+The workflow is a proposed verification path, not evidence that those platforms
+have run. These tests do not qualify native desktop behavior, live endpoints,
+packaging, deployment, or Minecraft/non-waking safety.
 
 ## Troubleshooting
 
