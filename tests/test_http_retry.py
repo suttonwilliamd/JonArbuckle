@@ -1,5 +1,6 @@
 """Offline HTTP contract tests. Never start the application or load config.json."""
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
+from functools import partial
 import builtins
 import importlib
 import io
@@ -14,29 +15,57 @@ import plyer
 import requests
 
 
-def blocked(*args, **kwargs):
-    raise AssertionError("Unexpected network, desktop, thread or config access")
+class ForbiddenAttempts:
+    """One scope's sticky audit; never retain arguments (possibly secrets).
+
+    No reset/allowlist: deliberate guard probes belong in separate oracle tests,
+    not in a product-test scope. Even caught guard exceptions fail scope exit.
+    """
+
+    def __init__(self):
+        self._attempts = []
+
+    @property
+    def attempts(self):
+        return tuple(self._attempts)
+
+    def blocked(self, surface, *args, **kwargs):
+        self._attempts.append(surface)
+        raise AssertionError(f"Forbidden operation attempted: {surface}")
+
+    def assert_clean(self):
+        if self._attempts:
+            raise AssertionError(f"Sticky forbidden attempts: {self.attempts!r}")
 
 
+@contextmanager
 def safety_guards():
-    stack = ExitStack()
-    for target in (
-        "socket.socket", "socket.create_connection", "socket.getaddrinfo",
-        "socket.gethostbyname", "socket.gethostbyname_ex",
-        "requests.sessions.Session.request", "requests.adapters.HTTPAdapter.send",
-        "tkinter.Tk", "threading.Thread.start",
-    ):
-        stack.enter_context(patch(target, side_effect=blocked))
-    # Do not force plyer's lazy native notification backend to load.
-    stack.enter_context(patch.object(plyer, "notification", Mock(notify=blocked)))
-    for module in (builtins, io):
-        original = module.open
-        def guarded_open(file, *args, _open=original, **kwargs):
-            if str(file).endswith("config.json"):
-                blocked()
-            return _open(file, *args, **kwargs)
-        stack.enter_context(patch.object(module, "open", guarded_open))
-    return stack
+    audit = ForbiddenAttempts()
+    # The finally also checks import/setup/body failures, after restoring patches.
+    try:
+        with ExitStack() as stack:
+            for target in (
+                "socket.socket", "socket.create_connection", "socket.getaddrinfo",
+                "socket.gethostbyname", "socket.gethostbyname_ex",
+                "requests.sessions.Session.request", "requests.adapters.HTTPAdapter.send",
+                "tkinter.Tk", "threading.Thread.start",
+            ):
+                stack.enter_context(patch(target, side_effect=partial(audit.blocked, target)))
+            # Do not force plyer's lazy native notification backend to load.
+            stack.enter_context(patch.object(plyer, "notification", Mock(
+                notify=partial(audit.blocked, "plyer.notification.notify"))))
+            for module in (builtins, io):
+                original = module.open
+                surface = f"{module.__name__}.open(config.json)"
+
+                def guarded_open(file, *args, _open=original, _surface=surface, **kwargs):
+                    if str(file).endswith("config.json"):
+                        audit.blocked(_surface)
+                    return _open(file, *args, **kwargs)
+                stack.enter_context(patch.object(module, "open", guarded_open))
+            yield audit
+    finally:
+        audit.assert_clean()
 
 
 # Actual product dependencies, no stub modules. Restore the pre-existing warning
@@ -47,8 +76,9 @@ with safety_guards(), warnings.catch_warnings():
 
 class HttpRetryTests(unittest.TestCase):
     def setUp(self):
-        self.enterContext(safety_guards())
-        self.enterContext(patch.object(core, "load_config", side_effect=blocked))
+        audit = self.enterContext(safety_guards())
+        self.enterContext(patch.object(core, "load_config", side_effect=partial(
+            audit.blocked, "core.load_config")))
         self.enterContext(patch.object(core, "_global_config", {}))
         self.get = self.enterContext(patch.object(core.requests, "get"))
         self.sleep = self.enterContext(patch.object(core.time, "sleep"))
@@ -181,15 +211,6 @@ class HttpRetryTests(unittest.TestCase):
                 core._http_request_with_retry({**self.ep, **overrides})
                 self.assertEqual(self.get.call_args_list,
                                  [call(self.ep["url"], timeout=timeout, verify=tls)] * 2)
-
-    def test_safety_guards_reject_unmocked_transport(self):
-        with self.assertRaises(AssertionError):
-            requests.Session().get(self.ep["url"])
-        with self.assertRaises(AssertionError):
-            socket.getaddrinfo("fixture.invalid", 443)
-        with self.assertRaises(AssertionError):
-            socket.socket()
-
 
 if __name__ == "__main__":
     unittest.main()
